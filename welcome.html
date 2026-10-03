@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Welcome</title>
+<style>
+  :root{
+    --bg:#07060d; --ink:#f3f0ff; --dim:#8d88a8;
+    --a:#7c5cff; --b:#00e0c6; --c:#ff4fa3;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    background:var(--bg); color:var(--ink);
+    font-family:"Trebuchet MS","Segoe UI",system-ui,sans-serif;
+    overflow:hidden; display:grid; place-items:center;
+  }
+  canvas{position:fixed;inset:0;width:100%;height:100%;z-index:0}
+  .glow{
+    position:fixed; width:60vmax; height:60vmax; border-radius:50%;
+    background:radial-gradient(circle,var(--a),transparent 65%);
+    filter:blur(60px); opacity:.35; z-index:0; pointer-events:none;
+    left:var(--x,50%); top:var(--y,50%); transform:translate(-50%,-50%);
+    transition:left .6s ease-out, top .6s ease-out;
+  }
+  main{
+    position:relative; z-index:1; text-align:center; padding:2rem;
+    perspective:900px;
+  }
+  .card{
+    padding:3.5rem 3rem; border-radius:28px;
+    background:rgba(20,16,38,.55);
+    border:1px solid rgba(255,255,255,.12);
+    backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+    box-shadow:0 30px 80px rgba(0,0,0,.6), inset 0 0 40px rgba(124,92,255,.12);
+    transform-style:preserve-3d;
+    transition:transform .15s ease-out;
+    max-width:min(92vw,760px);
+  }
+  .hello{
+    font-size:clamp(1rem,2.4vw,1.25rem); color:var(--dim);
+    letter-spacing:.04em; min-height:1.6em; margin-bottom:1.2rem;
+  }
+  .hello::after{content:"|";margin-left:2px;animation:blink 1s steps(1) infinite;color:var(--b)}
+  @keyframes blink{50%{opacity:0}}
+  h1{
+    font-size:clamp(2.4rem,8vw,5.4rem); line-height:1.02; font-weight:900;
+    letter-spacing:-.03em;
+    background:linear-gradient(100deg,var(--a),var(--b),var(--c),var(--a));
+    background-size:300% 100%;
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    animation:flow 6s linear infinite;
+    transform:translateZ(60px);
+    text-shadow:0 0 40px rgba(124,92,255,.35);
+  }
+  @keyframes flow{to{background-position:300% 0}}
+  .line{
+    width:0; height:3px; margin:1.8rem auto 0; border-radius:3px;
+    background:linear-gradient(90deg,var(--a),var(--b),var(--c));
+    animation:grow 1.4s .6s cubic-bezier(.2,.8,.2,1) forwards;
+  }
+  @keyframes grow{to{width:min(220px,50%)}}
+  button{
+    margin-top:2rem; padding:.9rem 2rem; border:0; border-radius:999px; cursor:pointer;
+    font:inherit; font-weight:700; color:#07060d;
+    background:linear-gradient(100deg,var(--b),var(--a));
+    box-shadow:0 10px 30px rgba(0,224,198,.3);
+    transition:transform .2s, box-shadow .2s;
+  }
+  button:hover{transform:translateY(-3px) scale(1.04);box-shadow:0 16px 40px rgba(124,92,255,.5)}
+  button:focus-visible{outline:3px solid var(--c);outline-offset:4px}
+  @media (prefers-reduced-motion:reduce){
+    h1,.hello::after{animation:none}
+    .line{animation:none;width:min(220px,50%)}
+    .card{transition:none}
+  }
+</style>
+</head>
+<body>
+<canvas id="bg" aria-hidden="true"></canvas>
+<div class="glow" id="glow"></div>
+
+<main>
+  <div class="card" id="card">
+    <p class="hello" id="hello" aria-label="Welcome"></p>
+    <h1>Never challenge bac info</h1>
+    <div class="line"></div>
+    <button id="btn">Change the vibe</button>
+  </div>
+</main>
+
+<script>
+  // Typing welcome
+  const words = ["Welcome.", "Bienvenue.", "مرحباً.", "Welcome."];
+  const hello = document.getElementById("hello");
+  let w = 0, i = 0, del = false;
+  (function type(){
+    const t = words[w];
+    hello.textContent = t.slice(0, i);
+    if(!del && i < t.length){ i++; setTimeout(type, 110); }
+    else if(!del){ del = true; setTimeout(type, 1400); }
+    else if(i > 0){ i--; setTimeout(type, 50); }
+    else { del = false; w = (w + 1) % words.length; setTimeout(type, 300); }
+  })();
+
+  // Particle network
+  const cv = document.getElementById("bg"), ctx = cv.getContext("2d");
+  let W, H, pts = [], mouse = {x:null,y:null}, hue = 260;
+  function resize(){
+    W = cv.width = innerWidth; H = cv.height = innerHeight;
+    pts = Array.from({length: Math.min(110, Math.floor(W*H/14000))}, () => ({
+      x:Math.random()*W, y:Math.random()*H,
+      vx:(Math.random()-.5)*.6, vy:(Math.random()-.5)*.6
+    }));
+  }
+  addEventListener("resize", resize); resize();
+  function frame(){
+    ctx.clearRect(0,0,W,H);
+    for(const p of pts){
+      p.x += p.vx; p.y += p.vy;
+      if(p.x<0||p.x>W) p.vx*=-1;
+      if(p.y<0||p.y>H) p.vy*=-1;
+      ctx.fillStyle = `hsla(${hue},90%,70%,.8)`;
+      ctx.beginPath(); ctx.arc(p.x,p.y,1.6,0,6.283); ctx.fill();
+    }
+    for(let a=0;a<pts.length;a++){
+      for(let b=a+1;b<pts.length;b++){
+        const d = Math.hypot(pts[a].x-pts[b].x, pts[a].y-pts[b].y);
+        if(d<130){
+          ctx.strokeStyle = `hsla(${hue},90%,70%,${(1-d/130)*.35})`;
+          ctx.beginPath(); ctx.moveTo(pts[a].x,pts[a].y); ctx.lineTo(pts[b].x,pts[b].y); ctx.stroke();
+        }
+      }
+      if(mouse.x!==null){
+        const d = Math.hypot(pts[a].x-mouse.x, pts[a].y-mouse.y);
+        if(d<170){
+          ctx.strokeStyle = `hsla(${hue+60},100%,70%,${(1-d/170)*.6})`;
+          ctx.beginPath(); ctx.moveTo(pts[a].x,pts[a].y); ctx.lineTo(mouse.x,mouse.y); ctx.stroke();
+        }
+      }
+    }
+    requestAnimationFrame(frame);
+  }
+  frame();
+
+  // Mouse: glow + 3D tilt
+  const card = document.getElementById("card"), glow = document.getElementById("glow");
+  addEventListener("pointermove", e => {
+    mouse.x = e.clientX; mouse.y = e.clientY;
+    glow.style.setProperty("--x", e.clientX + "px");
+    glow.style.setProperty("--y", e.clientY + "px");
+    const rx = (e.clientY / innerHeight - .5) * -12;
+    const ry = (e.clientX / innerWidth - .5) * 12;
+    card.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg)`;
+  });
+  addEventListener("pointerleave", () => { mouse.x = mouse.y = null; card.style.transform = ""; });
+
+  // Change color vibe
+  document.getElementById("btn").addEventListener("click", () => {
+    hue = Math.floor(Math.random()*360);
+    const r = document.documentElement.style;
+    r.setProperty("--a", `hsl(${hue},90%,65%)`);
+    r.setProperty("--b", `hsl(${(hue+120)%360},90%,60%)`);
+    r.setProperty("--c", `hsl(${(hue+240)%360},90%,65%)`);
+  });
+</script>
+</body>
+</html>
